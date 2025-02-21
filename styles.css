@@ -1,0 +1,60 @@
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: none;
+    margin: 0;
+}
+
+.file-input-container {
+    display: flex;
+    justify-content: left;
+}
+
+.text-container {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-width: 0;
+    gap: 0;
+    height: calc(100vh - 100px);
+}
+
+.line-numbers {
+    padding: 10px 8px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: right;
+    color: #666;
+    user-select: none;
+    min-width: 3em;
+    overflow: hidden;
+    white-space: pre;
+}
+
+.log-content {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #ccc;
+    border-radius: 0 4px 4px 0;
+    background: white;
+}
+
+.content-lines {
+    padding: 10px;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: pre;
+}
