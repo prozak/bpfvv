@@ -17,6 +17,7 @@ type AppState = {
 
 const createApp = () => {
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
+    const loadStatus = document.getElementById('load-status') as HTMLElement;
     const logContent = document.getElementById('log-content') as HTMLElement;
     const contentLines = document.getElementById('content-lines') as HTMLElement;
     const lineNumbers = document.getElementById('line-numbers') as HTMLElement;
@@ -68,6 +69,10 @@ const createApp = () => {
                 idx++;
             });
         }
+    };
+
+    const updateLoadStatus = async (state: AppState): Promise<void> => {
+        loadStatus.innerHTML = `Loaded ${state.lines.length} lines`;
     };
 
     const updateLineNumbers = async (startLine: number, count: number): Promise<void> => {
@@ -129,6 +134,7 @@ const createApp = () => {
     const updateView = async (state: AppState): Promise<void> => {
         updateLineNumbers(state.topLineIdx, state.visibleLines);
         formatVisibleLines(state);
+        updateLoadStatus(state);
     };
 
     // Recursive call of requestAnimationFrame() is a trick that makes browser call update() on every re-render.
