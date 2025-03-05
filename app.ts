@@ -16,15 +16,18 @@ type AppState = {
 }
 
 const createApp = () => {
+
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     const loadStatus = document.getElementById('load-status') as HTMLElement;
-    const logContent = document.getElementById('log-content') as HTMLElement;
-    const contentLines = document.getElementById('content-lines') as HTMLElement;
-    const lineNumbers = document.getElementById('line-numbers') as HTMLElement;
+
     const gotoStartButton = document.getElementById('goto-start') as HTMLButtonElement;
     const gotoLineInput = document.getElementById('goto-line') as HTMLInputElement;
     const gotoLineButton = document.getElementById('goto-line-btn') as HTMLButtonElement;
     const gotoEndButton = document.getElementById('goto-end') as HTMLButtonElement;
+
+    const logContent = document.getElementById('log-content') as HTMLElement;
+    const contentLines = document.getElementById('content-lines') as HTMLElement;
+    const lineNumbers = document.getElementById('line-numbers') as HTMLElement;
 
     const state: AppState = {
         fileBlob: new Blob([]),
@@ -37,15 +40,11 @@ const createApp = () => {
         topLineIdx: 0,
     };
 
-    const formatVisibleLines = async (state: AppState): Promise<void> => {
-        const lines = [];
-        for (let idx = state.topLineIdx; idx < state.topLineIdx + state.visibleLines; idx++) {
-            const line = state.lines[idx];
-            if (line)
-                lines.push(line.raw);
-        }
-        contentLines.innerHTML = lines.join('\n');
-    }
+    const updateLoadStatus = async (state: AppState): Promise<void> => {
+        const lastLine = state.lines[state.lines.length - 1];
+        const percentage = lastLine.offset / state.fileBlob.size * 100;
+        loadStatus.innerHTML = `Loaded ${percentage.toFixed(0)}% (${lastLine.idx + 1} lines)`;
+    };
 
     // Load and parse the file into memory from the beggining to the end
     const loadInputFile = async (state: AppState): Promise<void> => {
@@ -72,13 +71,8 @@ const createApp = () => {
                 offset += rawLine.length + 1;
                 idx++;
             });
+            updateLoadStatus(state);
         }
-    };
-
-    const updateLoadStatus = async (state: AppState): Promise<void> => {
-        const lastLine = state.lines[state.lines.length - 1];
-        const percentage = lastLine.offset / state.fileBlob.size * 100;
-        loadStatus.innerHTML = `Loaded ${percentage.toFixed(0)}% (${lastLine.idx + 1} lines)`;
     };
 
     const updateLineNumbers = async (startLine: number, count: number): Promise<void> => {
@@ -86,6 +80,21 @@ const createApp = () => {
             { length: count },
             (_, i) => `${startLine + i + 1}`
         ).join('\n');
+    };
+
+    const formatVisibleLines = async (state: AppState): Promise<void> => {
+        const lines = [];
+        for (let idx = state.topLineIdx; idx < state.topLineIdx + state.visibleLines; idx++) {
+            const line = state.lines[idx];
+            if (line)
+                lines.push(line.raw);
+        }
+        contentLines.innerHTML = lines.join('\n');
+    };
+
+    const updateView = async (state: AppState): Promise<void> => {
+        updateLineNumbers(state.topLineIdx, state.visibleLines);
+        formatVisibleLines(state);
     };
 
     const updateTopLineIdx = (state: AppState, delta: number): void => {
@@ -99,6 +108,7 @@ const createApp = () => {
         // scroll 4 lines at a time
         const linesToScroll = Math.sign(e.deltaY) * 4;
         updateTopLineIdx(state, linesToScroll);
+        updateView(state);
     };
 
     // Handle keyboard navigation
@@ -127,6 +137,7 @@ const createApp = () => {
                 return;
         }
         updateTopLineIdx(state, linesToScroll);
+        updateView(state);
     };
 
     const processFile = async (file: File): Promise<void> => {
@@ -134,6 +145,8 @@ const createApp = () => {
         state.lines = [];
         state.fileBlob = file;
         loadInputFile(state);
+        // delay a bit to give loadInputFile time to load the first chunk
+        setTimeout(() => updateView(state), 20);
     };
 
     const handleFileInput = (e: Event): void => {
@@ -141,27 +154,14 @@ const createApp = () => {
         if (files?.[0]) processFile(files[0]);
     };
 
-
-    const updateView = async (state: AppState): Promise<void> => {
-        updateLineNumbers(state.topLineIdx, state.visibleLines);
-        formatVisibleLines(state);
-        updateLoadStatus(state);
-    };
-
-    // Recursive call of requestAnimationFrame() is a trick that makes browser call update() on every re-render.
-    // updateView() is relatively cheap, and this allows us to not worry about calling it manually on every state change.
-    const update = () => {
-        updateView(state);
-        requestAnimationFrame(update);
-    }
-    requestAnimationFrame(update);
-
     const gotoStart = () => {
         state.topLineIdx = 0;
+        updateView(state);
     };
 
     const gotoEnd = () => {
         state.topLineIdx = Math.max(0, state.lines.length - state.visibleLines);
+        updateView(state);
     };
 
     const gotoLine = () => {
@@ -169,6 +169,7 @@ const createApp = () => {
         if (!isNaN(lineNumber)) {
             let idx = Math.max(0, Math.min(state.lines.length - state.visibleLines, lineNumber - 1));
             state.topLineIdx = idx;
+            updateView(state);
         }
     };
 
@@ -180,6 +181,8 @@ const createApp = () => {
     gotoLineInput.addEventListener('input', gotoLine);
     gotoStartButton.addEventListener('click', gotoStart);
     gotoEndButton.addEventListener('click', gotoEnd);
+
+    updateView(state);
 
     // Return cleanup function
     return () => {
