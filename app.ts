@@ -21,6 +21,10 @@ const createApp = () => {
     const logContent = document.getElementById('log-content') as HTMLElement;
     const contentLines = document.getElementById('content-lines') as HTMLElement;
     const lineNumbers = document.getElementById('line-numbers') as HTMLElement;
+    const gotoStartButton = document.getElementById('goto-start') as HTMLButtonElement;
+    const gotoLineInput = document.getElementById('goto-line') as HTMLInputElement;
+    const gotoLineButton = document.getElementById('goto-line-btn') as HTMLButtonElement;
+    const gotoEndButton = document.getElementById('goto-end') as HTMLButtonElement;
 
     const state: AppState = {
         fileBlob: new Blob([]),
@@ -72,7 +76,9 @@ const createApp = () => {
     };
 
     const updateLoadStatus = async (state: AppState): Promise<void> => {
-        loadStatus.innerHTML = `Loaded ${state.lines.length} lines`;
+        const lastLine = state.lines[state.lines.length - 1];
+        const percentage = lastLine.offset / state.fileBlob.size * 100;
+        loadStatus.innerHTML = `Loaded ${percentage.toFixed(0)}% (${lastLine.idx + 1} lines)`;
     };
 
     const updateLineNumbers = async (startLine: number, count: number): Promise<void> => {
@@ -97,7 +103,6 @@ const createApp = () => {
 
     // Handle keyboard navigation
     const handleKeyDown = async (e: KeyboardEvent) => {
-        e.preventDefault();
         let linesToScroll = 0;
         switch (e.key) {
             case 'ArrowDown':
@@ -112,6 +117,12 @@ const createApp = () => {
             case 'PageUp':
                 linesToScroll = -state.visibleLines;
                 break;
+            case 'Home':
+                gotoStart();
+                return;
+            case 'End':
+                gotoEnd();
+                return;
             default:
                 return;
         }
@@ -145,17 +156,41 @@ const createApp = () => {
     }
     requestAnimationFrame(update);
 
+    const gotoStart = () => {
+        state.topLineIdx = 0;
+    };
 
-    // Setup event listeners
+    const gotoEnd = () => {
+        state.topLineIdx = Math.max(0, state.lines.length - state.visibleLines);
+    };
+
+    const gotoLine = () => {
+        const lineNumber = parseInt(gotoLineInput.value, 10);
+        if (!isNaN(lineNumber)) {
+            let idx = Math.max(0, Math.min(state.lines.length - state.visibleLines, lineNumber - 1));
+            state.topLineIdx = idx;
+        }
+    };
+
     fileInput.addEventListener('change', handleFileInput);
     logContent.addEventListener('wheel', handleScroll);
     document.addEventListener('keydown', handleKeyDown);
+
+    // Navigation panel
+    gotoLineInput.addEventListener('input', gotoLine);
+    gotoStartButton.addEventListener('click', gotoStart);
+    gotoEndButton.addEventListener('click', gotoEnd);
 
     // Return cleanup function
     return () => {
         fileInput.removeEventListener('change', handleFileInput);
         logContent.removeEventListener('wheel', handleScroll);
         document.removeEventListener('keydown', handleKeyDown);
+
+        // Cleanup for new event listeners
+        gotoStartButton.removeEventListener('click', gotoStart);
+        gotoLineButton.removeEventListener('click', gotoLine);
+        gotoEndButton.removeEventListener('click', gotoEnd);
     };
 };
 
