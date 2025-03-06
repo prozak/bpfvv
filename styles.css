@@ -58,3 +58,19 @@ body {
     line-height: 1.4;
     white-space: pre;
 }
+
+.selected {
+    background-color: #bec0ff;
+}
+
+.focus {
+    background-color: #ffc0c0;
+}
+
+.ignorable {
+    color: #a0a0a0;
+}
+
+.log-line {
+    min-height: 1.4em;
+}
