@@ -12,11 +12,16 @@ type ParsedInsnLine = {
     comment: string;
 }
 
+type BpfState = {
+    values: Map<string, string>;
+}
+
 type ParsedLine = {
     idx: number; // index of the line in the input file
     offset: number; // byte offset in the input file pointing to the start of the line
     raw: string;
     insnLine?: ParsedInsnLine;
+    bpfState?: BpfState;
 }
 
 type AppState = {
@@ -67,8 +72,6 @@ const createApp = () => {
         if (!match)
             return null;
 
-        console.log(match[3].trim());
-
         const insn_str = match[3].trim();
         if (insn_str.startsWith('call ')) {
             return {
@@ -114,6 +117,54 @@ const createApp = () => {
         };
     }
 
+    const initialBpfStateValues = (): Map<string, string> => {
+        let values = new Map<string, string>();
+        for (let i = 0; i < 10; i++) {
+            values.set(`r${i}`, '');
+        }
+        values.set('r1', 'ctx()');
+        values.set('r10', 'fp0');
+        return values;
+    }
+
+    const mostRecentBpfState = (state: AppState, idx: number): BpfState => {
+        let bpfState = null;
+        for (let i = idx; i >= 0; i--) {
+            bpfState = state.lines[i]?.bpfState;
+            if (bpfState)
+                return bpfState;
+        }
+        return { values: initialBpfStateValues() };
+    }
+
+    const parseBpfState = (state: AppState, idx: number, rawLine: string): BpfState => {
+        const regex = /[0-9]+:\s+.*\s+; (.*)/;
+        const match = rawLine.match(regex);
+        if (!match)
+            return null;
+        const str = match[0];
+        const exprs = str.split(' ');
+
+        const prevBpfState = mostRecentBpfState(state, idx-1);
+        let values = new Map<string, string>(prevBpfState.values);
+        for (const expr of exprs) {
+            const equalsIndex = expr.indexOf('=');
+            if (equalsIndex === -1)
+                continue;
+            const kv = [expr.substring(0, equalsIndex), expr.substring(equalsIndex + 1)];
+            let key = kv[0].trim().toLowerCase();
+            if (!key)
+                continue;
+            if (key.endsWith('_w')) {
+                key = key.substring(0, key.length - 2);
+            }
+            const value = kv[1];
+            values.set(key, value);
+        };
+
+        return { values: values };
+    }
+
     const handleLineClick = async (e: MouseEvent) => {
         const clickedLine = (e.target as HTMLElement).closest('.log-line');
         if (!clickedLine) return;
@@ -142,9 +193,11 @@ const createApp = () => {
         let highlightClass = 'normal';
         if (idx === state.selectedLine)
             highlightClass = 'selected';
+        else if (line?.raw.includes('goto'))
+            highlightClass = 'goto-line';
         else if (isFocusLine(line))
-            highlightClass = 'focus';
-        else if (!line?.insnLine)
+            highlightClass = 'dependency';
+        else if (!line?.insnLine && !line?.bpfState)
             highlightClass = 'ignorable';
         return `<div class="log-line ${highlightClass}" line-index="${idx}">${escapeHtml(line.raw)}</div>`
     }
@@ -170,6 +223,7 @@ const createApp = () => {
                     offset: offset,
                     raw: rawLine,
                     insnLine: parseInsn(rawLine),
+                    bpfState: parseBpfState(state, idx, rawLine),
                 };
                 state.lines.push(parsedLine);
                 offset += rawLine.length + 1;
@@ -204,9 +258,57 @@ const createApp = () => {
         contentLines.innerHTML = lines.join('');
     }
 
+    const updateStatePanel = async (state: AppState): Promise<void> => {
+        const bpfState = mostRecentBpfState(state, state.selectedLine);
+        if (!bpfState)
+            return;
+
+        const statePanel = document.getElementById('state-panel') as HTMLElement;
+        const table = statePanel.querySelector('table');
+        table.innerHTML = '';
+
+        const addRow = (key: string, value: string) => {
+            const row = document.createElement('tr');
+            const nameCell = document.createElement('td');
+            nameCell.textContent = key;
+            const valueCell = document.createElement('td');
+            const valueSpan = document.createElement('span');
+            valueSpan.textContent = escapeHtml(value);
+            valueCell.appendChild(valueSpan);
+            row.appendChild(nameCell);
+            row.appendChild(valueCell);
+            table.appendChild(row);
+        }
+
+        // first add the registers
+        for (let i = 0; i <= 10; i++) {
+            addRow(`r${i}`, bpfState.values.get(`r${i}`) || '');
+        }
+
+        // then the stack
+        for (let i = 512; i >= 0; i--) {
+            const key = `fp-${i}`;
+            if (bpfState.values.has(key))
+                addRow(key, bpfState.values.get(key));
+        }
+
+        // then the rest
+        const sortedValues = [];
+        for (const [key, value] of bpfState.values.entries()) {
+            if (!key.startsWith('r') && !key.startsWith('fp-')) {
+                sortedValues.push([key, value]);
+            }
+        }
+        sortedValues.sort((a, b) => a[0].localeCompare(b[0]));
+        for (const [key, value] of sortedValues) {
+            addRow(key, value);
+        }
+    }
+
     const updateView = async (state: AppState): Promise<void> => {
         updateLineNumbers(state.topLineIdx, state.visibleLines);
         formatVisibleLines(state);
+        updateStatePanel(state);
     };
 
     const updateTopLineIdx = (state: AppState, delta: number): void => {
