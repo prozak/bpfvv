@@ -72,6 +72,9 @@ body {
     padding: 10px;
     line-height: 1.4;
     white-space: pre;
+    /* white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word; */
 }
 
 .state-panel {
@@ -137,4 +140,8 @@ body {
 .state-panel td:last-child {
     font-family: monospace;
     word-break: break-all;
+}
+
+.effect-write {
+    background-color: #ffdddd;
 }

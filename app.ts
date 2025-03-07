@@ -12,8 +12,43 @@ type ParsedInsnLine = {
     comment: string;
 }
 
+enum Effect {
+    NONE = 0,
+    READ = 1,
+    WRITE = 2,
+}
+
+type BpfValue = {
+    value: string;
+    effect: Effect;
+}
+
+const makeValue = (value: string, effect: Effect = Effect.NONE): BpfValue => {
+    return { value, effect };
+}
+
 type BpfState = {
-    values: Map<string, string>;
+    values: Map<string, BpfValue>;
+}
+
+const initialBpfState = (): BpfState => {
+    let values = new Map<string, BpfValue>();
+    for (let i = 0; i < 10; i++) {
+        values.set(`r${i}`, null);
+    }
+    values.set('r1', makeValue('ctx()'));
+    values.set('r10', makeValue('fp0'));
+    return { values: values };
+}
+
+const copyBpfState = (state: BpfState): BpfState => {
+    let values = new Map<string, BpfValue>();
+    for (const [key, val] of state.values.entries()) {
+        // Don't copy the effect, only the value
+        const bpfValue = val ? { value: val.value, effect: Effect.NONE } : null;
+        values.set(key, bpfValue);
+    }
+    return { values: values };
 }
 
 type ParsedLine = {
@@ -117,16 +152,6 @@ const createApp = () => {
         };
     }
 
-    const initialBpfStateValues = (): Map<string, string> => {
-        let values = new Map<string, string>();
-        for (let i = 0; i < 10; i++) {
-            values.set(`r${i}`, '');
-        }
-        values.set('r1', 'ctx()');
-        values.set('r10', 'fp0');
-        return values;
-    }
-
     const mostRecentBpfState = (state: AppState, idx: number): BpfState => {
         let bpfState = null;
         for (let i = idx; i >= 0; i--) {
@@ -134,7 +159,7 @@ const createApp = () => {
             if (bpfState)
                 return bpfState;
         }
-        return { values: initialBpfStateValues() };
+        return initialBpfState();
     }
 
     const parseBpfState = (state: AppState, idx: number, rawLine: string): BpfState => {
@@ -142,27 +167,27 @@ const createApp = () => {
         const match = rawLine.match(regex);
         if (!match)
             return null;
+        const prevBpfState = mostRecentBpfState(state, idx-1);
+        let bpfState = copyBpfState(prevBpfState);
         const str = match[0];
         const exprs = str.split(' ');
-
-        const prevBpfState = mostRecentBpfState(state, idx-1);
-        let values = new Map<string, string>(prevBpfState.values);
         for (const expr of exprs) {
             const equalsIndex = expr.indexOf('=');
             if (equalsIndex === -1)
                 continue;
             const kv = [expr.substring(0, equalsIndex), expr.substring(equalsIndex + 1)];
             let key = kv[0].trim().toLowerCase();
+            let effect = Effect.NONE;
             if (!key)
                 continue;
             if (key.endsWith('_w')) {
                 key = key.substring(0, key.length - 2);
+                effect = Effect.WRITE;
             }
-            const value = kv[1];
-            values.set(key, value);
+            const value = makeValue(kv[1], effect);
+            bpfState.values.set(key, value);
         };
-
-        return { values: values };
+        return bpfState;
     }
 
     const handleLineClick = async (e: MouseEvent) => {
@@ -267,13 +292,16 @@ const createApp = () => {
         const table = statePanel.querySelector('table');
         table.innerHTML = '';
 
-        const addRow = (key: string, value: string) => {
+        const addRow = (label: string, value: BpfValue) => {
             const row = document.createElement('tr');
+            if (value?.effect === Effect.WRITE) {
+                row.classList.add('effect-write');
+            }
             const nameCell = document.createElement('td');
-            nameCell.textContent = key;
+            nameCell.textContent = label;
             const valueCell = document.createElement('td');
             const valueSpan = document.createElement('span');
-            valueSpan.textContent = escapeHtml(value);
+            valueSpan.textContent = escapeHtml(value?.value || '');
             valueCell.appendChild(valueSpan);
             row.appendChild(nameCell);
             row.appendChild(valueCell);
@@ -282,7 +310,7 @@ const createApp = () => {
 
         // first add the registers
         for (let i = 0; i <= 10; i++) {
-            addRow(`r${i}`, bpfState.values.get(`r${i}`) || '');
+            addRow(`r${i}`, bpfState.values.get(`r${i}`));
         }
 
         // then the stack
