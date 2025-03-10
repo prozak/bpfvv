@@ -83,6 +83,8 @@ const createApp = () => {
     const gotoLineButton = document.getElementById('goto-line-btn') as HTMLButtonElement;
     const gotoEndButton = document.getElementById('goto-end') as HTMLButtonElement;
 
+    const inputText = document.getElementById('input-text') as HTMLTextAreaElement;
+    const mainContent = document.getElementById('main-content') as HTMLElement;
     const logContent = document.getElementById('log-content') as HTMLElement;
     const contentLines = document.getElementById('content-lines') as HTMLElement;
     const lineNumbers = document.getElementById('line-numbers') as HTMLElement;
@@ -258,6 +260,25 @@ const createApp = () => {
         }
     };
 
+    const loadInputText = async (state: AppState, text: string): Promise<void> => {
+        let offset = 0;
+        let idx = 0;
+        const lines = text.split('\n');
+        lines.forEach(rawLine => {
+            const parsedLine: ParsedLine = {
+                idx: idx,
+                offset: offset,
+                raw: rawLine,
+                insnLine: parseInsn(rawLine),
+                bpfState: parseBpfState(state, idx, rawLine),
+            };
+            state.lines.push(parsedLine);
+            offset += rawLine.length + 1;
+            idx++;
+        });
+        updateLoadStatus(state);
+    };
+
     const updateLoadStatus = async (state: AppState): Promise<void> => {
         if (state.lines.length === 0)
             return;
@@ -337,6 +358,19 @@ const createApp = () => {
         updateLineNumbers(state.topLineIdx, state.visibleLines);
         formatVisibleLines(state);
         updateStatePanel(state);
+        inputText.value = '';
+        if (state.lines.length === 0) {
+            mainContent.style.display = 'none';
+            inputText.style.display = 'flex';
+        } else {
+            mainContent.style.display = 'flex';
+            inputText.style.display = 'none';
+        }
+    };
+
+    const handlePaste = async (e: ClipboardEvent) => {
+        await loadInputText(state, e.clipboardData.getData('text'));
+        updateView(state);
     };
 
     const updateTopLineIdx = (state: AppState, delta: number): void => {
@@ -424,6 +458,7 @@ const createApp = () => {
     fileInput.addEventListener('change', handleFileInput);
     logContent.addEventListener('wheel', handleScroll);
     document.addEventListener('keydown', handleKeyDown);
+    inputText.addEventListener('paste', handlePaste);
 
     // Navigation panel
     gotoLineInput.addEventListener('input', gotoLine);
