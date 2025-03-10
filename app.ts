@@ -192,16 +192,18 @@ const createApp = () => {
         return bpfState;
     }
 
+
+    const updateSelectedLine = (idx: number): void => {
+        state.selectedLine = Math.max(0, Math.min(state.lines.length - 1, idx));
+        state.focusReg = state.lines[state.selectedLine]?.insnLine?.insn.src_reg;
+    }
+
     const handleLineClick = async (e: MouseEvent) => {
         const clickedLine = (e.target as HTMLElement).closest('.log-line');
-        if (!clickedLine) return;
-
+        if (!clickedLine)
+            return;
         const lineIndex = parseInt(clickedLine.getAttribute('line-index') || '0', 10);
-        state.selectedLine = lineIndex;
-
-        const line = state.lines[lineIndex];
-        state.focusReg = line?.insnLine?.insn.src_reg;
-
+        updateSelectedLine(lineIndex);
         updateView(state);
     };
 
@@ -256,7 +258,7 @@ const createApp = () => {
                 offset += rawLine.length + 1;
                 idx++;
             });
-            updateLoadStatus(state);
+            updateLoadStatus();
         }
     };
 
@@ -276,12 +278,18 @@ const createApp = () => {
             offset += rawLine.length + 1;
             idx++;
         });
-        updateLoadStatus(state);
+        updateLoadStatus(true);
     };
 
-    const updateLoadStatus = async (state: AppState): Promise<void> => {
-        if (state.lines.length === 0)
+    const updateLoadStatus = async (loadedFromPaste: boolean = false): Promise<void> => {
+        if (state.lines.length === 0) {
+            loadStatus.innerHTML = '';
             return;
+        }
+        if (loadedFromPaste) {
+            loadStatus.innerHTML = `Loaded ${state.lines.length} lines`;
+            return;
+        }
         const lastLine = state.lines[state.lines.length - 1];
         const percentage = lastLine.offset / state.fileBlob.size * 100;
         loadStatus.innerHTML = `Loaded ${percentage.toFixed(0)}% (${lastLine.idx + 1} lines)`;
@@ -354,17 +362,29 @@ const createApp = () => {
         }
     }
 
+    const updateVisibleLinesValue = (state: AppState): void => {
+        const tmp = document.createElement('div');
+        tmp.className = 'log-line';
+        tmp.textContent = 'Test';
+        tmp.style.visibility = 'hidden';
+        contentLines.appendChild(tmp);
+        const height = tmp.offsetHeight;
+        contentLines.removeChild(tmp);
+        state.visibleLines = Math.max(1, Math.floor(logContent.offsetHeight / height) - 1);
+    };
+
     const updateView = async (state: AppState): Promise<void> => {
-        updateLineNumbers(state.topLineIdx, state.visibleLines);
-        formatVisibleLines(state);
-        updateStatePanel(state);
-        inputText.value = '';
         if (state.lines.length === 0) {
             mainContent.style.display = 'none';
             inputText.style.display = 'flex';
+            inputText.value = '';
         } else {
             mainContent.style.display = 'flex';
             inputText.style.display = 'none';
+            updateVisibleLinesValue(state);
+            updateLineNumbers(state.topLineIdx, state.visibleLines);
+            formatVisibleLines(state);
+            updateStatePanel(state);
         }
     };
 
@@ -392,21 +412,23 @@ const createApp = () => {
         let linesToScroll = 0;
         switch (e.key) {
             case 'ArrowDown':
-                state.selectedLine = Math.min(state.selectedLine + 1, state.lines.length - 1);
+            case 'j':
+                updateSelectedLine(state.selectedLine + 1);
                 if (state.selectedLine >= state.topLineIdx + state.visibleLines)
                     linesToScroll = 1;
                 break;
             case 'ArrowUp':
-                state.selectedLine = Math.max(state.selectedLine - 1, 0);
+            case 'k':
+                updateSelectedLine(state.selectedLine - 1);
                 if (state.selectedLine < state.topLineIdx)
                     linesToScroll = -1;
                 break;
             case 'PageDown':
-                state.selectedLine = Math.min(state.selectedLine + state.visibleLines, state.lines.length - 1);
+                updateSelectedLine(state.selectedLine + state.visibleLines);
                 linesToScroll = state.visibleLines;
                 break;
             case 'PageUp':
-                state.selectedLine = Math.max(state.selectedLine - state.visibleLines, 0);
+                updateSelectedLine(Math.max(state.selectedLine - state.visibleLines, 0));
                 linesToScroll = -state.visibleLines;
                 break;
             case 'Home':
@@ -444,13 +466,13 @@ const createApp = () => {
 
     const gotoStart = () => {
         state.topLineIdx = 0;
-        state.selectedLine = 0;
+        updateSelectedLine(0);
         updateView(state);
     };
 
     const gotoEnd = () => {
         state.topLineIdx = Math.max(0, state.lines.length - state.visibleLines);
-        state.selectedLine = state.lines.length - 1;
+        updateSelectedLine(state.lines.length - 1);
         updateView(state);
     };
 
@@ -463,16 +485,22 @@ const createApp = () => {
         }
     };
 
+    const handleResize = (): void => {
+        updateView(state);
+    };
+
     fileInput.addEventListener('change', handleFileInput);
     logContent.addEventListener('wheel', handleScroll);
     document.addEventListener('keydown', handleKeyDown);
     inputText.addEventListener('paste', handlePaste);
+    window.addEventListener('resize', handleResize);
 
     // Navigation panel
     gotoLineInput.addEventListener('input', gotoLine);
     gotoStartButton.addEventListener('click', gotoStart);
     gotoEndButton.addEventListener('click', gotoEnd);
     contentLines.addEventListener('click', handleLineClick);
+
     updateView(state);
 
     // Return cleanup function
@@ -480,12 +508,12 @@ const createApp = () => {
         fileInput.removeEventListener('change', handleFileInput);
         logContent.removeEventListener('wheel', handleScroll);
         document.removeEventListener('keydown', handleKeyDown);
-
-        // Cleanup for new event listeners
+        inputText.removeEventListener('paste', handlePaste);
         gotoStartButton.removeEventListener('click', gotoStart);
         gotoLineButton.removeEventListener('click', gotoLine);
         gotoEndButton.removeEventListener('click', gotoEnd);
         contentLines.removeEventListener('click', handleLineClick);
+        window.removeEventListener('resize', handleResize);
     };
 };
 
