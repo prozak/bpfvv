@@ -392,15 +392,21 @@ const createApp = () => {
         let linesToScroll = 0;
         switch (e.key) {
             case 'ArrowDown':
-                linesToScroll = 1;
+                state.selectedLine = Math.min(state.selectedLine + 1, state.lines.length - 1);
+                if (state.selectedLine >= state.topLineIdx + state.visibleLines)
+                    linesToScroll = 1;
                 break;
             case 'ArrowUp':
-                linesToScroll = -1;
+                state.selectedLine = Math.max(state.selectedLine - 1, 0);
+                if (state.selectedLine < state.topLineIdx)
+                    linesToScroll = -1;
                 break;
             case 'PageDown':
+                state.selectedLine = Math.min(state.selectedLine + state.visibleLines, state.lines.length - 1);
                 linesToScroll = state.visibleLines;
                 break;
             case 'PageUp':
+                state.selectedLine = Math.max(state.selectedLine - state.visibleLines, 0);
                 linesToScroll = -state.visibleLines;
                 break;
             case 'Home':
@@ -438,11 +444,13 @@ const createApp = () => {
 
     const gotoStart = () => {
         state.topLineIdx = 0;
+        state.selectedLine = 0;
         updateView(state);
     };
 
     const gotoEnd = () => {
         state.topLineIdx = Math.max(0, state.lines.length - state.visibleLines);
+        state.selectedLine = state.lines.length - 1;
         updateView(state);
     };
 
