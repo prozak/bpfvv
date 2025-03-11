@@ -232,24 +232,28 @@ const createApp = () => {
 
     // Load and parse the file into memory from the beggining to the end
     const loadInputFile = async (state: AppState): Promise<void> => {
-        const chunkSize = 65536; // bytes
+        const reader = state.fileBlob.stream()
+                        .pipeThrough(new TextDecoderStream())
+                        .getReader();
         let firstChunk = true;
         let remainder = '';
         let eof = false;
         let offset = 0;
         let idx = 0;
         while (!eof) {
-            // const t1 = performance.now();
-            eof = (offset + chunkSize >= state.fileBlob.size);
-            const end = Math.min(offset + chunkSize, state.fileBlob.size);
-            const chunk = state.fileBlob.slice(offset, end);
-            const text = await chunk.text();
-            const lines = text.split('\n');
-            lines[0] = remainder + lines[0];
-            if (lines.length > 1) {
-                remainder = lines.pop();
+            let lines = [];
+            const { done, value } = await reader.read();
+            if (done) {
+                eof = true;
+                if (remainder.length > 0)
+                    lines.push(remainder);
             } else {
-                remainder = '';
+                lines = value.split('\n');
+                lines[0] = remainder + lines[0];
+                if (lines.length > 1)
+                    remainder = lines.pop();
+                else
+                    remainder = '';
             }
             lines.forEach(rawLine => {
                 const parsedLine: ParsedLine = {
@@ -267,8 +271,10 @@ const createApp = () => {
                 firstChunk = false;
                 updateView(state);
             }
-            // const t2 = performance.now();
-            // console.log(`${lines.length} lines read in ${(t2 - t1).toFixed(3)}ms`);
+            // This is a trick to yield control to the browser's rendering engine.
+            // Otherwise the UI will wait until loadInputFile completes.
+            // Note: it wasn't necessary with Blob.slice() because it yields implicitly.
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
     };
 
