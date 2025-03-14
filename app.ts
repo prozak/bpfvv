@@ -64,8 +64,10 @@ const nextBpfState = (state: BpfState, line: ParsedLine): BpfState => {
             effect = Effect.WRITE;
         newState.values.set(expr.id, makeValue(expr.value, effect));
     }
+    // if it's a register write, but value is unknown, assume scratch
     for (const id of line.bpfIns?.writes || []) {
-        // if it's a write, but value is unknown, assume scratch
+        if (!id.startsWith('r'))
+            continue;
         if (!newState.values.has(id))
             newState.values.set(id, makeValue('', Effect.WRITE));
         newState.lastKnownWrites.set(id, line.idx);
