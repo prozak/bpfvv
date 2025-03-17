@@ -38,8 +38,8 @@ const copyBpfState = (state: BpfState): BpfState => {
     let values = new Map<string, BpfValue>();
     for (const [key, val] of state.values.entries()) {
         // Don't copy the effect, only the value
-        const bpfValue = val ? { value: val.value, effect: Effect.NONE } : null;
-        values.set(key, bpfValue);
+        if (val?.value)
+            values.set(key, { value: val.value, effect: Effect.NONE });
     }
     let lastKnownWrites = new Map<string, number>();
     for (const [key, val] of state.lastKnownWrites.entries()) {
@@ -52,26 +52,26 @@ const nextBpfState = (state: BpfState, line: ParsedLine): BpfState => {
     if (line.type !== ParsedLineType.INSTRUCTION)
         return state;
     let newState = copyBpfState(state);
-    for (const expr of line.bpfStateExprs) {
-        let effect = Effect.NONE;
-        let read = line.bpfIns?.reads?.find(r => r === expr.id);
-        let written = line.bpfIns?.writes?.find(r => r === expr.id);
-        if (read && written)
-            effect = Effect.UPDATE;
-        else if (read)
-            effect = Effect.READ;
-        else if (written)
-            effect = Effect.WRITE;
-        newState.values.set(expr.id, makeValue(expr.value, effect));
+
+    let effects = new Map<string, Effect>();
+    for (const id of line.bpfIns?.reads || []) {
+        effects.set(id, Effect.READ);
     }
-    // if it's a register write, but value is unknown, assume scratch
     for (const id of line.bpfIns?.writes || []) {
-        if (!id.startsWith('r'))
-            continue;
-        if (!newState.values.has(id))
-            newState.values.set(id, makeValue('', Effect.WRITE));
+        if (effects.has(id))
+            effects.set(id, Effect.UPDATE);
+        else
+            effects.set(id, Effect.WRITE);
+        newState.values.set(id, makeValue('', effects.get(id)));
         newState.lastKnownWrites.set(id, line.idx);
     }
+
+    // verifier reported values
+    for (const expr of line.bpfStateExprs) {
+        let effect = effects.get(expr.id) || Effect.NONE;
+        newState.values.set(expr.id, makeValue(expr.value, effect));
+    }
+
     return newState;
 }
 
