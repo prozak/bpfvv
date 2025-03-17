@@ -106,11 +106,6 @@ body {
     color: #a0a0a0;
 }
 
-.goto-line {
-    font-weight: bold;
-    color: red;
-}
-
 .log-line {
     min-height: 1.4em;
 }

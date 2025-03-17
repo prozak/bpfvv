@@ -192,8 +192,6 @@ const createApp = () => {
         let highlightClass = 'normal';
         if (idx === state.selectedIdx)
             highlightClass = 'selected';
-        else if (line?.raw.includes('goto'))
-            highlightClass = 'goto-line';
         else if (!line?.bpfIns && !line?.bpfStateExprs)
             highlightClass = 'ignorable';
 
