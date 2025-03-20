@@ -1,11 +1,12 @@
-The bpfvv app is in early stages of development, and you should expect
-bugs, UI inconveniences and significant changes from week to week.
-
-If you're writing BPF programs and you think this tool (or a better
-version of it) would be useful, feel free to use it and don't be shy
-to report issues and request features via github. Thanks!
-
 # How to use bpfvv
+
+> [!WARNING]
+> The bpfvv app is in early stages of development, and you should expect
+> bugs, UI inconveniences and significant changes from week to week.
+>
+> If you're working with BPF and you think this tool (or a better
+> version of it) would be useful, feel free to use it and don't be shy
+> to report issues and request features via github. Thanks!
 
 Go here: https://theihor.github.io/bpfvv/
 
