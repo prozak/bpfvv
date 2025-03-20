@@ -127,6 +127,12 @@ const createApp = (url: string) => {
     const contentLines = document.getElementById('content-lines') as HTMLElement;
     const lineNumbers = document.getElementById('line-numbers') as HTMLElement;
 
+    const exampleLink = document.getElementById('example-link') as HTMLAnchorElement;
+    if (exampleLink) {
+        const exampleLogUrl = 'https://gist.githubusercontent.com/theihor/1bea72b50f6834c00b67a3087304260e/raw/9c0cb831a4924e5f0f63cc1e0d9620aec771d31f/pyperf600-v1.log';
+        exampleLink.href = `${window.location.pathname}?url=${exampleLogUrl}`;
+    }
+
     const state: AppState = {
         fileBlob: new Blob([]),
         lines: [],
@@ -744,7 +750,6 @@ const createApp = (url: string) => {
     };
 };
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     const url = getUrlParameter('url');
     createApp(url);
