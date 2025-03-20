@@ -93,7 +93,25 @@ type AppState = {
     memSlotDependencies: Set<number>; // set of idx
 }
 
-const createApp = () => {
+const getUrlParameter = (param: string): string | null => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+};
+
+const fetchLogFromUrl = async (url: string): Promise<string> => {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            return '';
+        }
+        return await response.text();
+    } catch (error) {
+        console.error('Error fetching log:', error);
+        return '';
+    }
+};
+
+const createApp = (url: string) => {
 
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     const loadStatus = document.getElementById('load-status') as HTMLElement;
@@ -695,6 +713,19 @@ const createApp = () => {
     contentLines.addEventListener('mouseover', handleMouseOver);
     contentLines.addEventListener('mouseout', handleMouseOut);
 
+    if (url) {
+        fetchLogFromUrl(url).then(text => {
+            if (text) {
+                loadInputText(state, text);
+                updateView(state);
+            } else {
+                const textArea = document.getElementById('input-text') as HTMLTextAreaElement;
+                textArea.placeholder = `Failed to load log from ${url}\n` + textArea.placeholder;
+                updateView(state);
+            }
+        });
+    }
+
     updateView(state);
 
     // Return cleanup function
@@ -715,5 +746,6 @@ const createApp = () => {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    createApp();
+    const url = getUrlParameter('url');
+    createApp(url);
 });
