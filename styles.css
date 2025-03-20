@@ -141,6 +141,10 @@ body {
     background-color: #ffeeee;
 }
 
+.effect-read {
+    background-color: #eeffee;
+}
+
 .hovered-mem-slot {
     border: 1px solid black;
 }

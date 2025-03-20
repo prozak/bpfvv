@@ -476,6 +476,7 @@ const createApp = () => {
 
     const updateStatePanel = async (state: AppState): Promise<void> => {
         const { state: bpfState, idx } = mostRecentBpfState(state, state.selectedLineIdx);
+        const ins = state.lines[idx].bpfIns;
         const prevBpfState = mostRecentBpfState(state, idx - 1).state;
 
         const statePanel = document.getElementById('state-panel') as HTMLElement;
@@ -491,6 +492,15 @@ const createApp = () => {
                 case Effect.WRITE:
                 case Effect.UPDATE:
                     row.classList.add('effect-write');
+                    if (id == 'MEM') {
+                        // show the value of register that was stored
+                        const reg = ins?.alu?.src.id;
+                        if (reg) {
+                            const regValue = bpfState.values.get(reg);
+                            content = `<= ${regValue?.value}`;
+                        }
+                        break;
+                    }
                     let v1 = value?.value || 'scratched';
                     let v2 = prevValue?.value || '';
                     if (v1 !== v2)
@@ -499,6 +509,10 @@ const createApp = () => {
                         content = v1;
                     break;
                 case Effect.READ:
+                    row.classList.add('effect-read');
+                    content = value?.value || '';
+                    break;
+                case Effect.NONE:
                 default:
                     content = value?.value || '';
                     break;
@@ -536,8 +550,6 @@ const createApp = () => {
         }
         sortedValues.sort((a, b) => a.localeCompare(b));
         for (const key of sortedValues) {
-            if (key == 'MEM')
-                continue;
             addRow(key);
         }
     }
