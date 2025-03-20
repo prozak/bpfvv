@@ -364,7 +364,7 @@ const createApp = () => {
         for (const child of contentLines.children) {
             const idx = contentLineIdx(child as HTMLElement);
             const ins = idx >= 0 ? state.lines[idx].bpfIns : null;
-            const pc = ins?.pc ? `${ins.pc}:` : '';
+            const pc = typeof ins?.pc === 'number' ? `${ins.pc}:` : '';
             pcLines.push(pc);
         }
         lineNumbers.innerHTML = pcLines.join('\n');
@@ -444,7 +444,7 @@ const createApp = () => {
 
     const updateContentLines = async (state: AppState): Promise<void> => {
         const viewStart = state.topLineIdx;
-        const viewEnd = viewStart + state.visibleLines;
+        const viewEnd = Math.min(viewStart + state.visibleLines, state.lines.length);
 
         const removeList = [];
         for (const child of contentLines.children) {
