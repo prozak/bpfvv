@@ -157,3 +157,24 @@ body {
     border: 1px solid black;
     font-weight: bold;
 }
+
+.howto-link {
+    display: block;
+    padding: 8px;
+    margin: 4px 0;
+    text-decoration: none;
+    color: #0066cc;
+    font-size: 16px;
+    text-align: right;
+}
+
+.howto-link:hover {
+    text-decoration: underline;
+}
+
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
