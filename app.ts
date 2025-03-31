@@ -13,6 +13,9 @@ type BpfValue = {
 }
 
 const makeValue = (value: string, effect: Effect = Effect.NONE): BpfValue => {
+    // @Hack display fp0 as fp-0
+    if (value === 'fp0')
+        value = 'fp-0';
     return { value, effect };
 }
 
@@ -74,8 +77,6 @@ const nextBpfState = (state: BpfState, line: ParsedLine): BpfState => {
 
     return newState;
 }
-
-const DEPENDENCIES_DEPTH = 4;
 
 type AppState = {
     fileBlob: Blob;
@@ -371,6 +372,7 @@ const createApp = (url: string) => {
             loadRawLine(state, rawLine);
         });
         updateLoadStatus(100, 100);
+        gotoEnd();
     };
 
     const updateLoadStatus = async (loaded: number, total: number): Promise<void> => {
@@ -498,6 +500,8 @@ const createApp = (url: string) => {
         updateLineNumbers(state);
     }
 
+    const RIGHT_ARROW = '->';
+
     const updateStatePanel = async (state: AppState): Promise<void> => {
         const { state: bpfState, idx } = mostRecentBpfState(state, state.selectedLineIdx);
         const ins = state.lines[idx].bpfIns;
@@ -521,16 +525,19 @@ const createApp = (url: string) => {
                         const reg = ins?.alu?.src.id;
                         if (reg) {
                             const regValue = bpfState.values.get(reg);
-                            content = `<= ${regValue?.value}`;
+                            content = `${regValue?.value} ${RIGHT_ARROW}`;
                         }
                         break;
                     }
-                    let v1 = value?.value || 'scratched';
-                    let v2 = prevValue?.value || '';
-                    if (v1 !== v2)
-                        content = `${v1} <= ${v2}`;
+
+                    let newVal = value?.value;
+                    let oldVal = prevValue?.value || '';
+                    if (newVal === oldVal)
+                        content = newVal;
+                    else if (newVal)
+                        content = `${oldVal} ${RIGHT_ARROW} ${newVal}`;
                     else
-                        content = v1;
+                        content = `${oldVal} <span style="color:grey">-> scratched</span>`;
                     break;
                 case Effect.READ:
                     row.classList.add('effect-read');
@@ -546,7 +553,7 @@ const createApp = (url: string) => {
             nameCell.style.width = '7ch';
             const valueCell = document.createElement('td');
             const valueSpan = document.createElement('span');
-            valueSpan.textContent = content;
+            valueSpan.innerHTML = content;
             valueCell.appendChild(valueSpan);
             row.appendChild(nameCell);
             row.appendChild(valueCell);
@@ -559,7 +566,7 @@ const createApp = (url: string) => {
         }
 
         // then the stack
-        for (let i = 512; i >= 0; i--) {
+        for (let i = 0; i <= 512; i++) {
             const key = `fp-${i}`;
             if (bpfState.values.has(key))
                 addRow(key);
