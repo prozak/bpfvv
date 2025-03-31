@@ -1,6 +1,6 @@
 **bpfvv** stands for BPF Verifier Visualizer
 
-https://theihor.github.io/bpfvv/
+https://libbpf.github.io/bpfvv/
 
 This project is an experiment about visualizing Linux Kernel BPF verifier log to help BPF programmers with debugging verification failures. 
 
