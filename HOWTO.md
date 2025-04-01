@@ -8,7 +8,7 @@
 > version of it) would be useful, feel free to use it and don't be shy
 > to report issues and request features via github. Thanks!
 
-Go here: https://theihor.github.io/bpfvv/
+Go here: https://libbpf.github.io/bpfvv/
 
 Load a log by pasting it into the text box or choosing a file.
 
@@ -103,7 +103,7 @@ In the "state panel", the values that are written by selected
 instruction are marked with light-red background and the previous
 value is also often displayed, for example:
 ```
-r6	0 <= scalar(id=1)
+r6	scalar(id=1) -> 0
 ```
 Means that current instruction changes the value of `r6` from
 `scalar(id=1)` to `0`.
