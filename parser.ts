@@ -506,7 +506,7 @@ export const parseOpcodeIns = (str: string, pc: number): { ins: BpfInstruction, 
 }
 
 export const parseLine = (rawLine: string): ParsedLine => {
-    let { match, rest } = consumeRegex(RE_PROGRAM_COUNTER, rawLine);
+    let { match, rest } = consumeRegex(RE_PROGRAM_COUNTER, consumeSpaces(rawLine));
     let ins : BpfInstruction = null;
     if (match) {
         const pc = parseInt(match[1], 10);
