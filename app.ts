@@ -109,6 +109,12 @@ const pushStackFrame = (state: BpfState): BpfState => {
 }
 
 const popStackFrame = (exitingState: BpfState): BpfState => {
+    // input log might be incomplete
+    // if exit is encountered before any subprogram calls
+    // return a fresh stack frame
+    if (SAVED_BPF_STATES.length == 0) {
+        return initialBpfState();
+    }
     // no need to copy the full state here, it was copied on push
     const state = SAVED_BPF_STATES.pop();
     for (const r of BPF_SCRATCH_REGS) {
