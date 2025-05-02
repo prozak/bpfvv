@@ -210,8 +210,8 @@ const RE_CALL_TARGET = /^call ([0-9a-z_#+-]+)/;
 const RE_JMP_TARGET = /^goto (pc[+-][0-9]+)/;
 const RE_FRAME_ID = /^frame([0-9]+): /;
 
-const BPF_ALU_OPERATORS = [ '=', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>=', 's>>=', 's<<='];
-const BPF_COND_OPERATORS = [ '==', '!=', '<', '<=', '>', '>=', 's<', 's<=', 's>', 's>='];
+const BPF_ALU_OPERATORS = ['s>>=', 's<<=', '<<=', '>>=', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '='];
+const BPF_COND_OPERATORS = [ 's>=', 's<=', '==', '!=', '<=', '>=', 's<', 's>', '<', '>'];
 
 const consumeRegex = (regex: RegExp, str: string): { match: string[], rest: string } => {
     const match = regex.exec(str);
@@ -534,6 +534,10 @@ const parseJmpInstruction = (str: string, opcode: BpfOpcode): { ins: BpfInstruct
         case BpfJmpCode.JSET:
         case BpfJmpCode.JSGT:
         case BpfJmpCode.JSGE:
+        case BpfJmpCode.JLT:
+        case BpfJmpCode.JLE:
+        case BpfJmpCode.JSLT:
+        case BpfJmpCode.JSLE:
             return parseConditionalJmp(str, opcode);
         case BpfJmpCode.JA:
             return parseUnconditionalJmp(str, opcode);
