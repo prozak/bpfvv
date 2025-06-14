@@ -21,3 +21,16 @@ This is a self-contained web app that runs entirely on the client side. There is
 * To learn more about BPF visit https://ebpf.io/
 * See also: https://github.com/eddyz87/log2dot
 
+## Building
+
+Run `./build.sh` to install dependencies and compile the TypeScript source:
+
+```bash
+./build.sh
+```
+
+Passing `serve` will also start a local server using Python:
+
+```bash
+./build.sh serve
+```
